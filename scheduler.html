@@ -2257,26 +2257,89 @@ function openQuickAction(post,onSave){
 }
 /* ─── CLAUDE AI CHAT ─── */
 const CLAUDE_API_KEY=localStorage.getItem("bf_api_key")||"";
-const AI_SYSTEM=`당신은 피트니스 크리에이터 영민씨의 콘텐츠 스케쥴러 앱 내 AI 어시스턴트입니다.
-영민씨는 인스타그램(캐러셀, 릴스)과 유튜브(숏츠, 미드폼) 콘텐츠를 제작합니다.
-사용 툴: Snow, Canva, CapCut PC, Premiere Pro, BlueStacks CapCut 모바일(AI음성).
+const AI_SYSTEM=`당신은 피트니스 크리에이터 영민씨(손영민)의 BrightFlow 콘텐츠 스케쥴러 전용 AI입니다.
 
-사용자가 콘텐츠 아이디어를 말하면, 반드시 다음 JSON을 응답 끝에 포함하세요:
+=== 채널 정체성 ===
+채널명: 영민한피지컬 (Smart Physical)
+타깃: 30-40대 직장인 남성, 운동 경험 있지만 효율을 못 찾는 사람
+톤: 차분하고 권위 있는 전문가. 숫자와 사실로 말함. 친근하지 않음
+핵심: 화려함보다 정확함, 엔터테인먼트보다 정보
+
+=== 제작 방식 ===
+【캐러셀】Snow→Canva→CapCut PC / 감성(동기부여/스토리) or 루틴(5~7종) / AI음성X
+【릴스A 지식캡션】Premiere Pro / 운동영상+지식자막 / 훅 첫2초 / AI음성X
+【릴스B 숏츠재활용】숏츠 완성본 릴스 재업 / AI음성X
+【유튜브 숏츠】Premiere Pro + BlueStacks CapCut AI음성(Adam 1.2배속) / 기존영상 활용 / 나레이션 먼저 완성→영상배치 / AI음성 필수
+【미드폼】Premiere Pro + CapCut AI음성 / 3~10분 / AI음성 필수
+【우선순위】캐러셀 → 숏츠/미드폼 → 릴스
+
+=== 유튜브 숏츠 스크립트 구조 (45초) ===
+[0-3초] 훅: "안녕하세요" 절대 금지. 자기소개 금지.
+  - 숫자: "대부분의 사람이 모르는 단 1가지"
+  - 반전: "열심히 할수록 근육이 안 느는 이유가 있습니다"
+  - 경고: "이 운동 지금 당장 멈추세요"
+  - 질문: "왜 3개월째 몸이 그대로일까요?"
+[3-10초] 공감: 타깃 고민 정확히 짚기. 숫자/구체적 상황 활용
+[10-25초] 반전: 기존 상식 뒤집기. 데이터/연구 인용 가능
+[25-42초] 솔루션: 3가지 이내. 숫자 필수(주2회, 4세트, 3초버티기). 신체부위 명확히
+[42-45초] CTA: 저장 또는 구독만. 좋아요 구걸 금지
+
+=== 검증된 공식 3가지 ===
+공식1 "딱 1개만 바꿨습니다" → 자세교정, 루틴변경, 식단조정
+공식2 "후회/경고" → 잘못된 운동법, 부상예방, 식단오해
+공식3 "진실/비밀" → 보충제, 운동빈도, 체지방감량 원리
+
+=== 시리즈 기획 ===
+A) 부위별 자세교정: 가슴/등/하체/어깨/팔/복근 (각 영상에 다음편 예고)
+B) 30-40대 전용 루틴: 직장인 현실루틴, 체지방감량
+C) 헬스 상식 파괴: 매주 1개 상식 뒤집기, 댓글 주제 수렴
+D) 전/후 비교: 빨간X vs 초록체크 포맷
+
+=== 편집 지침 ===
+썸네일: 얼굴클로즈업+감정표정 / 텍스트 5단어이내 / 빨간or노란 강조
+영상: 0-3초 풀스크린 텍스트훅 / 틀린동작→0.5배속+빨간X / 올바른→초록체크 / BGM 20-30% / Adam 1.2배속
+업로드: 평일 오전6-7시 or 저녁8-9시 / 주말 오전8-9시 / 주3-4회
+
+=== 효과음 매핑 ===
+훅/첫장면: 두동~첫장면1
+강조포인트: 띠이이잉빼꼼, 띵띵띵맞는표현포인트
+틀린동작: 뻐이XX틀렸을때표현, 빼익~황당놀램
+정답/좋은생각: 띵좋은생각느낌표
+장면전환: 장면전환빼익, 장면전환수웅, 장면전환휘리릭
+CTA: 뽀로롱자막효과2
+반전/충격: 79떨어지는으아아아아
+
+=== SEO ===
+제목: [핵심키워드] + [호기심유발] #shorts (키워드 앞배치)
+설명: 첫줄=제목반복 → 150-200자 상세설명(관련키워드 자연스럽게) → 해시태그 7-15개
+태그: 10-20개 핵심/롱테일/연관 키워드 조합
+
+=== 스크립트 출력 형식 ===
+[제목 후보 3개]
+[썸네일 텍스트]
+[스크립트] 0-3초(훅) / 3-10초(공감) / 10-25초(반전) / 25-42초(솔루션) / 42-45초(CTA)
+[편집 지시사항]
+[해시태그 10개]
+
+=== 행동 원칙 ===
+1. 질문 최소화 — 바로 정리해서 등록 카드 제시
+2. 스스로 판단 — 타입/툴/AI음성 알아서 결정
+3. 짧고 명확하게
+4. 여러 개 요청시 → 목록 보여주고 "등록할까요?" 확인 후 일괄저장
+5. 스크립트 요청시 → 위 출력형식으로 완성본 제시 후 등록 카드
+
+콘텐츠 확정시 응답 끝에 반드시 포함:
 ---CONTENT_JSON---
-{"title":"제목","type":"타입키","memo":"핵심 편집방식 및 메모","aiVoice":true/false}
+{"title":"제목","type":"타입키","memo":"편집방식 및 핵심메모","aiVoice":true/false}
 ---END_JSON---
 
-타입키 목록:
-- emotion_carousel (감성 캐러셀, Instagram)
-- routine_carousel (루틴 캐러셀, Instagram)  
-- reels1 (릴스 지식캡션, Instagram)
-- reels2 (릴스 숏츠재활용, Instagram)
-- shorts (유튜브 숏츠, YouTube - aiVoice:true)
-- midform (미드폼, YouTube - aiVoice:true)
+여러 개일 경우:
+---MULTI_JSON---
+[{"title":"","type":"","memo":"","aiVoice":false},{"title":"","type":"","memo":"","aiVoice":false}]
+---END_MULTI---
 
-자연스럽게 대화하고, 아이디어를 구체화하는 질문을 하세요. 
-콘텐츠가 확정되면 JSON을 포함해서 등록 카드를 보여주세요.
-한국어로 답변하세요.`;
+타입키: emotion_carousel / routine_carousel / reels1 / reels2 / shorts / midform
+한국어로. 간결하게.`;
 
 let aiChatHistory=[];
 
@@ -2400,7 +2463,7 @@ async function sendAIMessage(){
         "anthropic-dangerous-direct-browser-access":"true"
       },
       body:JSON.stringify({
-        model:"claude-haiku-4-5-20251001",
+        model:"claude-sonnet-4-6",
         max_tokens:1000,
         system:AI_SYSTEM,
         messages:aiChatHistory
@@ -2421,11 +2484,22 @@ async function sendAIMessage(){
 
     // Check for content JSON
     const jsonMatch=reply.match(/---CONTENT_JSON---\s*([\s\S]*?)\s*---END_JSON---/);
-    const cleanReply=reply.replace(/---CONTENT_JSON---[\s\S]*?---END_JSON---/,"").trim();
+    const multiMatch=reply.match(/---MULTI_JSON---\s*([\s\S]*?)\s*---END_MULTI---/);
+    const cleanReply=reply
+      .replace(/---CONTENT_JSON---[\s\S]*?---END_JSON---/,"")
+      .replace(/---MULTI_JSON---[\s\S]*?---END_MULTI---/,"")
+      .trim();
 
     addAIMessage(cleanReply,"ai");
 
-    if(jsonMatch){
+    if(multiMatch){
+      try{
+        const arr=JSON.parse(multiMatch[1]);
+        if(Array.isArray(arr)&&arr.length>0){
+          addAIMultiCard(arr);
+        }
+      }catch(e){console.error("MULTI_JSON parse error",e);}
+    }else if(jsonMatch){
       try{
         const cData=JSON.parse(jsonMatch[1]);
         addAIAddCard(cData);
@@ -2448,6 +2522,55 @@ function addAIMessage(text,role,id,isThinking){
   msgs.scrollTop=msgs.scrollHeight;
 }
 
+function addAIMultiCard(arr){
+  const msgs=document.getElementById("ai-messages");if(!msgs)return;
+  const div=document.createElement("div");
+  div.style.cssText="border-radius:16px;overflow:hidden;border:1.5px solid rgba(128,128,128,.2)";
+  div.innerHTML=`
+    <div style="padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:13px;font-weight:800">총 ${arr.length}개 콘텐츠</div>
+      <div style="font-size:11px;font-weight:600;opacity:.6">아래에서 선택하거나 전체 저장</div>
+    </div>
+    ${arr.map((item,i)=>{
+      const c=ct(item.type||"routine_carousel");
+      return`<div style="padding:10px 14px;border-top:1px solid rgba(128,128,128,.1);display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:800;margin-bottom:2px">${esc(item.title)}</div>
+          <div style="display:flex;gap:5px;align-items:center">${platformBadge(c.platform,"sm")} <span style="font-size:10px;color:${c.color};font-weight:700">${c.label}</span></div>
+        </div>
+        <button data-multi-idx="${i}" style="padding:5px 10px;border-radius:8px;font-size:11px;font-weight:800;border:none;background:${c.color}20;color:${c.color};cursor:pointer">💡저장</button>
+      </div>`;
+    }).join("")}
+    <div style="padding:10px 14px;border-top:1px solid rgba(128,128,128,.1);display:flex;gap:8px">
+      <button id="multi-all-idea" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:800;border:none;cursor:pointer" class="btn-g">💡 전체 아이디어 저장</button>
+    </div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+
+  // 개별 저장
+  div.querySelectorAll("[data-multi-idx]").forEach(btn=>btn.addEventListener("click",()=>{
+    const item=arr[+btn.dataset.multiIdx];
+    haptic("save");
+    S.ideas.push({id:S.nextId++,text:item.title,type:item.type||"routine_carousel",memo:item.memo||""});
+    save();rMetrics();
+    btn.textContent="✓ 저장됨";btn.disabled=true;btn.style.opacity="0.5";
+    toast("💡 아이디어 저장됐어요!");
+  }));
+
+  // 전체 저장
+  div.querySelector("#multi-all-idea").addEventListener("click",()=>{
+    haptic("success");
+    arr.forEach(item=>{
+      S.ideas.push({id:S.nextId++,text:item.title,type:item.type||"routine_carousel",memo:item.memo||""});
+    });
+    save();rMetrics();
+    div.querySelectorAll("[data-multi-idx]").forEach(btn=>{btn.textContent="✓";btn.disabled=true;btn.style.opacity="0.5";});
+    div.querySelector("#multi-all-idea").textContent=`✓ ${arr.length}개 전체 저장됨`;
+    div.querySelector("#multi-all-idea").disabled=true;
+    toast(`💡 ${arr.length}개 아이디어 저장됐어요!`);
+  });
+}
+
 function addAIAddCard(cData){
   const msgs=document.getElementById("ai-messages");if(!msgs)return;
   const c=ct(cData.type||"routine_carousel");
@@ -2465,17 +2588,36 @@ function addAIAddCard(cData){
       </div>
       <div style="font-size:28px">${c.platform==="youtube"?"🎬":"📸"}</div>
     </div>
-    <button class="ai-add-btn btn-p" id="ai-add-now">+ 지금 바로 등록하기</button>`;
+    <div style="display:flex;gap:8px;padding:8px">
+      <button class="ai-add-btn" id="ai-save-idea" style="flex:1;background:${c.color}18;color:${c.color};border-radius:10px;font-weight:800;font-size:13px;padding:10px">💡 아이디어 저장</button>
+      <button class="ai-add-btn btn-p" id="ai-add-now" style="flex:1;border-radius:10px;font-size:13px;padding:10px">📅 콘텐츠 등록</button>
+    </div>`;
   msgs.appendChild(div);
   msgs.scrollTop=msgs.scrollHeight;
 
+  // 아이디어로 바로 저장
+  div.querySelector("#ai-save-idea").addEventListener("click",()=>{
+    haptic("save");
+    S.ideas.push({
+      id:S.nextId++,
+      text:cData.title||"",
+      type:cData.type||"routine_carousel",
+      memo:cData.memo||""
+    });
+    save();rMetrics();
+    toast("💡 아이디어 보관함에 저장됐어요!");
+    // 버튼 비활성화
+    div.querySelector("#ai-save-idea").textContent="✓ 저장됨";
+    div.querySelector("#ai-save-idea").disabled=true;
+    div.querySelector("#ai-save-idea").style.opacity="0.5";
+  });
+
+  // 콘텐츠로 등록 (모달 오픈)
   div.querySelector("#ai-add-now").addEventListener("click",()=>{
     haptic("success");
-    // Close AI chat
     document.getElementById("ai-overlay").style.transform="translateY(100%)";
     setTimeout(()=>{
       document.getElementById("ai-root")?.remove();
-      // Open add modal with pre-filled data
       openModal("add",{
         id:null,
         type:cData.type||"routine_carousel",
@@ -2488,7 +2630,7 @@ function addAIAddCard(cData){
         pinned:false
       });
     },320);
-    toast("✦ AI가 콘텐츠를 등록했어요!");
+    toast("📅 콘텐츠 등록 화면 열었어요!");
   });
 }
 function lev(a,b){
