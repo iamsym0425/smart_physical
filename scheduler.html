@@ -3562,15 +3562,18 @@ function openAIQuickRegister(aiText, mode){
     const type=document.getElementById("ai-qr-type").value;
     if(!title){toast("제목을 입력해주세요");return;}
     haptic("success");
+    // 전체 AI 응답을 메모에 저장
+    const fullMemo=aiText.replace(/---CONTENT_JSON---[\s\S]*?---END_JSON---/g,"")
+      .replace(/---MULTI_JSON---[\s\S]*?---END_MULTI---/g,"").trim();
     if(mode==="idea"){
-      S.ideas.push({id:S.nextId++,text:title,type,memo:""});
+      S.ideas.push({id:S.nextId++,text:title,type,memo:fullMemo});
       save();rMetrics();if(S.tab===2)rIdeas();
       toast("💡 아이디어 저장됐어요!");
+      close();
     }else{
       close();
-      setTimeout(()=>openModal("add",{id:null,type,title,status:"idea",date:nowFmt(),time:nowTime(),memo:"",aiVoice:ct(type).aiDef,pinned:false}),320);
+      setTimeout(()=>openModal("add",{id:null,type,title,status:"idea",date:nowFmt(),time:nowTime(),memo:fullMemo,aiVoice:ct(type).aiDef,pinned:false}),320);
     }
-    if(mode==="idea")close();
   });
 }
 
