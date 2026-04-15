@@ -3167,7 +3167,7 @@ CTA: 뽀로롱자막효과2
 4. 여러 개 요청시 → 목록 보여주고 "등록할까요?" 확인 후 일괄저장
 5. 스크립트 요청시 → 위 출력형식으로 완성본 제시 후 등록 카드
 
-콘텐츠 확정시 응답 끝에 반드시 포함:
+콘텐츠 확정시 응답 끝에 반드시 포함 (절대 빠뜨리지 말 것):
 ---CONTENT_JSON---
 {"title":"제목","type":"타입키","memo":"편집방식 및 핵심메모","aiVoice":true/false}
 ---END_JSON---
@@ -3328,7 +3328,7 @@ async function sendAIMessage(){
       },
       body:JSON.stringify({
         model:"claude-haiku-4-5-20251001",
-        max_tokens:1000,
+        max_tokens:2048,
         system:AI_SYSTEM,
         messages:aiChatHistory
       })
