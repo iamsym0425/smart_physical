@@ -3384,82 +3384,100 @@ async function sendAIMessage(){
     addAIMessage(cleanReply,"ai");
 
     // "n번 등록해줘" 강제 처리 — JSON 없어도 대화에서 추출
-    // "n번 등록해줘" 강제 처리 — JSON 있어도 없어도 항상 실행
+    // JSON 파싱 먼저 시도
+    if(multiMatch){
+      try{
+        const arr=JSON.parse(multiMatch[1]);
+        if(Array.isArray(arr)&&arr.length>0){addAIMultiCard(arr);return;}
+      }catch(e){console.error("MULTI_JSON parse error",e);}
+    }
+    if(jsonMatch){
+      try{
+        const cData=JSON.parse(jsonMatch[1]);
+        addAIAddCard(cData);return;
+      }catch(e){console.error("JSON parse error",e);}
+    }
+    if(rawMultiMatch){
+      try{
+        const arrStr=rawMultiMatch[1].trim().match(/(\[[\s\S]*\])/)?.[1];
+        if(arrStr){const arr=JSON.parse(arrStr);if(Array.isArray(arr)&&arr.length>0){addAIMultiCard(arr);return;}}
+      }catch(e){console.error("RAW MULTI parse error",e);}
+    }
+    if(mdJsonMatch){
+      try{
+        const parsed=JSON.parse(mdJsonMatch[1]);
+        if(Array.isArray(parsed)){addAIMultiCard(parsed);return;}
+        else{addAIAddCard(parsed);return;}
+      }catch(e){console.error("MD JSON parse error",e);}
+    }
+
+    // JSON 없을 때만 강제 등록 시도
     if(registerMatch||allRegisterMatch){
-      // prevAI = 현재 응답 이전의 AI 메시지 (주제 목록이 있는 곳)
-      const allLines=[...prevAI.split(/\n/),...cleanReply.split(/\n/)];
+      const allAIText=aiChatHistory
+        .filter(m=>m.role==="assistant")
+        .map(m=>m.content)
+        .join("\n")+"\n"+cleanReply;
+      const allLines=allAIText.split(/\n/);
       const numbered=allLines.map(l=>{
         const trimmed=l.trim();
-        // "**1) 항목명**" 같은 섹션 헤더는 제외 (별표로 감싼 것)
         if(/^\*\*\d+[).]/.test(trimmed))return null;
-        // "- A)", "- 1)" 같은 서브항목도 제외
-        if(/^-\s+[A-Z][).]/.test(trimmed))return null;
-        const m=trimmed.match(/^(\d+)[.]\s+(.{4,50})$/)  // "1. 제목" (마침표만, 4~50자)
-          ||trimmed.match(/^##\s+(\d+)\s+\*{0,2}(.{4,50?})\*{0,2}$/); // "## 1 제목"
+        if(/^-\s+[\[\]A-Z][).]/.test(trimmed))return null;
+        if(/\(.*\d.*\)/.test(trimmed)&&!trimmed.match(/^\d+[.]\s/))return null;
+        const m=trimmed.match(/^(\d+)[.]\s+(.{4,60})$/)
+          ||trimmed.match(/^##\s+(\d+)\s+\*{0,2}(.{4,60})\*{0,2}$/);
         return m?{num:+m[1],title:m[2].replace(/^["*\s]+|["*\s]+$/g,"").trim()}:null;
       }).filter(x=>x&&x.title.length>3);
       const seen=new Set();
       const uniq=numbered.filter(x=>{if(seen.has(x.num))return false;seen.add(x.num);return true;});
 
-      // 디버그
-      toast(`🔍 패턴감지: ${registerMatch?registerMatch[1]+"번":"전체"} / 목록${uniq.length}개`);
-      console.log("FORCE REGISTER - numbered:", uniq, "prevAI:", prevAI.slice(0,200));
-
       const typeGuess=(s)=>s.includes("숏츠")||s.includes("shorts")?"shorts":
         s.includes("릴스")||s.includes("reels")?"reels1":
         s.includes("캐러셀")||s.includes("carousel")?"routine_carousel":
         s.includes("미드폼")||s.includes("midform")?"midform":"shorts";
-      const allText=msg+prevAI+cleanReply;
+      const allText=msg+allAIText;
 
-      if(uniq.length>0){
-        if(allRegisterMatch){
-          const arr=uniq.map(x=>({title:x.title,type:typeGuess(allText),memo:"",aiVoice:typeGuess(allText)==="shorts"}));
-          addAIMultiCard(arr);
-        }else{
-          const targetNum=+registerMatch[1];
-          const found=uniq.find(x=>x.num===targetNum)||uniq[targetNum-1];
-          if(found){
-            addAIAddCard({title:found.title,type:typeGuess(allText),memo:"",aiVoice:typeGuess(allText)==="shorts"});
-            return;
-          }else{
-            toast("⚠️ "+targetNum+"번 항목을 못 찾았어요");
-          }
+      if(allRegisterMatch&&uniq.length>0){
+        const arr=uniq.map(x=>({title:x.title,type:typeGuess(allText),memo:"",aiVoice:typeGuess(allText)==="shorts"}));
+        addAIMultiCard(arr);return;
+      }else if(registerMatch){
+        const targetNum=+registerMatch[1];
+        const found=uniq.find(x=>x.num===targetNum);
+        if(found){
+          addAIAddCard({title:found.title,type:typeGuess(allText),memo:"",aiVoice:typeGuess(allText)==="shorts"});
+          return;
         }
-        return;
-      }else{
-        toast("⚠️ 번호 목록을 못 찾았어요 — 이전 대화에 번호가 있나요?");
+      }
+
+      // 못 찾으면 API 재호출로 추출
+      toast("🔄 AI에게 다시 확인 중...");
+      try{
+        const extractPrompt=registerMatch
+          ?`위 대화에서 ${registerMatch[1]}번 항목의 제목만 골라서 아래 JSON 형식으로만 답해. 다른 말 하지 마:\n{"title":"제목","type":"shorts","memo":"","aiVoice":true}`
+          :`위 대화의 모든 번호 항목을 골라서 아래 JSON 배열 형식으로만 답해. 다른 말 하지 마:\n[{"title":"제목","type":"shorts","memo":"","aiVoice":true}]`;
+        const extractRes=await fetch("https://api.anthropic.com/v1/messages",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","x-api-key":localStorage.getItem("bf_api_key")||"","anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+          body:JSON.stringify({
+            model:"claude-haiku-4-5-20251001",
+            max_tokens:300,
+            messages:[...aiChatHistory,{role:"user",content:extractPrompt}]
+          })
+        });
+        const extractData=await extractRes.json();
+        const extractText=extractData.content?.[0]?.text||"";
+        const clean=extractText.replace(/```json|```/g,"").trim();
+        if(clean.startsWith("[")){
+          const arr=JSON.parse(clean);
+          if(Array.isArray(arr)&&arr.length>0){addAIMultiCard(arr);return;}
+        }else if(clean.startsWith("{")){
+          const obj=JSON.parse(clean);
+          addAIAddCard(obj);return;
+        }
+      }catch(e){
+        toast("⚠️ 등록 실패 — '주제 목록 주고 등록카드 만들어줘'로 다시 시도해주세요");
       }
     }
 
-    // JSON 파싱으로 등록
-    if(multiMatch){
-      try{
-        const arr=JSON.parse(multiMatch[1]);
-        if(Array.isArray(arr)&&arr.length>0)addAIMultiCard(arr);
-      }catch(e){console.error("MULTI_JSON parse error",e);}
-    }else if(rawMultiMatch){
-      // 끝 태그 없이 JSON 배열만 있을 때
-      try{
-        const raw=rawMultiMatch[1].trim();
-        // 배열 부분만 추출
-        const arrStr=raw.match(/(\[[\s\S]*\])/)?.[1];
-        if(arrStr){
-          const arr=JSON.parse(arrStr);
-          if(Array.isArray(arr)&&arr.length>0)addAIMultiCard(arr);
-        }
-      }catch(e){console.error("RAW MULTI parse error",e);}
-    }else if(jsonMatch){
-      try{
-        const cData=JSON.parse(jsonMatch[1]);
-        addAIAddCard(cData);
-      }catch(e){console.error("JSON parse error",e);}
-    }else if(mdJsonMatch){
-      try{
-        const parsed=JSON.parse(mdJsonMatch[1]);
-        if(Array.isArray(parsed))addAIMultiCard(parsed);
-        else addAIAddCard(parsed);
-      }catch(e){console.error("MD JSON parse error",e);}
-    }
   }catch(e){
     document.getElementById(thinkId)?.remove();
     addAIMessage("API 연결 오류가 발생했어요. 잠시 후 다시 시도해주세요. 😅","ai");
