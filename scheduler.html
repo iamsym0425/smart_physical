@@ -3167,15 +3167,17 @@ CTA: 뽀로롱자막효과2
 4. 여러 개 요청시 → 목록 보여주고 "등록할까요?" 확인 후 일괄저장
 5. 스크립트 요청시 → 위 출력형식으로 완성본 제시 후 등록 카드
 
-콘텐츠 확정시 응답 끝에 반드시 포함 (절대 빠뜨리지 말 것):
+콘텐츠 확정시 응답 끝에 반드시 포함 (절대 빠뜨리지 말 것, 마크다운 코드블록 사용 금지):
 ---CONTENT_JSON---
 {"title":"제목","type":"타입키","memo":"편집방식 및 핵심메모","aiVoice":true/false}
 ---END_JSON---
 
-여러 개일 경우:
+여러 개일 경우 (끝 태그는 반드시 ---END_MULTI--- 사용):
 ---MULTI_JSON---
 [{"title":"","type":"","memo":"","aiVoice":false},{"title":"","type":"","memo":"","aiVoice":false}]
 ---END_MULTI---
+
+절대 규칙: 끝 태그는 항상 ---END_JSON--- 또는 ---END_MULTI--- 사용. ---MULTI--- 사용 금지.
 
 타입키: emotion_carousel / routine_carousel / reels1 / reels2 / shorts / midform
 한국어로. 간결하게.`;
@@ -3309,11 +3311,13 @@ async function sendAIMessage(){
   haptic("tap");
   inp.value="";inp.style.height="auto";
 
-  // Add user message
+  // "n번 등록해줘" 패턴 감지 — AI 응답 전에 미리 체크
+  const registerMatch=msg.match(/(\d+)\s*번\s*(?:주제\s*)?(?:으로\s*)?등록/);
+  const allRegisterMatch=msg.match(/(?:전체|다|모두|전부)\s*등록/);
+
   addAIMessage(msg,"user");
   aiChatHistory.push({role:"user",content:msg});
 
-  // Thinking indicator
   const thinkId="think-"+Date.now();
   addAIMessage("생각 중...","ai",thinkId,true);
 
@@ -3361,27 +3365,83 @@ async function sendAIMessage(){
     aiChatHistory.push({role:"assistant",content:reply});
 
     // Check for content JSON
-    const jsonMatch=reply.match(/---CONTENT_JSON---\s*([\s\S]*?)\s*---END_JSON---/);
-    const multiMatch=reply.match(/---MULTI_JSON---\s*([\s\S]*?)\s*---END_MULTI---/);
+    // 유연한 파싱 — 모델이 끝 태그를 다르게 써도 대응
+    const jsonMatch=reply.match(/---CONTENT_JSON---\s*([\s\S]*?)\s*---(?:END_JSON|END|JSON_END|CONTENT_JSON_END)---/);
+    const multiMatch=reply.match(/---MULTI_JSON---\s*([\s\S]*?)\s*---(?:END_MULTI|MULTI|END|MULTI_END|MULTI_JSON_END)---/);
+    // 마크다운 코드블록 fallback
+    const mdJsonMatch=!jsonMatch&&!multiMatch?reply.match(/```json\s*([\s\S]*?)\s*```/):null;
+    // 마지막 수단: MULTI_JSON 블록이 있으면 JSON 배열 추출 시도
+    const rawMultiMatch=!jsonMatch&&!multiMatch&&!mdJsonMatch?reply.match(/---MULTI_JSON---\s*([\s\S]*)/):null;
+
     const cleanReply=reply
-      .replace(/---CONTENT_JSON---[\s\S]*?---END_JSON---/,"")
-      .replace(/---MULTI_JSON---[\s\S]*?---END_MULTI---/,"")
+      .replace(/---CONTENT_JSON---[\s\S]*?---[A-Z_]+---/g,"")
+      .replace(/---MULTI_JSON---[\s\S]*/,"")
+      .replace(/```json[\s\S]*?```/g,"")
       .trim();
 
     addAIMessage(cleanReply,"ai");
 
+    // "n번 등록해줘" 강제 처리 — JSON 없어도 대화에서 추출
+    const needForceRegister=(registerMatch||allRegisterMatch)&&!jsonMatch&&!multiMatch&&!mdJsonMatch&&!rawMultiMatch;
+    if(needForceRegister){
+      // 이전 AI 응답에서 번호 목록 추출
+      const prevAI=aiChatHistory.filter(m=>m.role==="assistant").slice(-1)[0]?.content||cleanReply;
+      const lines=prevAI.split(/\n/);
+      // "1. 제목", "1) 제목", "**1.** 제목" 패턴 추출
+      const numbered=lines.map(l=>{
+        const m=l.match(/^[\s*]*(\d+)[.)]\s*\*{0,2}(.+?)\*{0,2}\s*$/);
+        return m?{num:+m[1],title:m[2].trim()}:null;
+      }).filter(Boolean);
+
+      if(numbered.length>0){
+        if(allRegisterMatch){
+          // 전체 등록
+          const typeGuess=msg.includes("숏츠")||cleanReply.includes("shorts")?"shorts":
+            msg.includes("릴스")||cleanReply.includes("reels")?"reels1":
+            msg.includes("캐러셀")||cleanReply.includes("carousel")?"routine_carousel":"shorts";
+          const arr=numbered.map(x=>({title:x.title,type:typeGuess,memo:"",aiVoice:typeGuess==="shorts"}));
+          addAIMultiCard(arr);
+        }else if(registerMatch){
+          const targetNum=+registerMatch[1];
+          const found=numbered.find(x=>x.num===targetNum)||numbered[targetNum-1];
+          if(found){
+            const typeGuess=msg.includes("숏츠")||cleanReply.includes("shorts")||prevAI.includes("shorts")?"shorts":
+              msg.includes("릴스")||cleanReply.includes("reels")||prevAI.includes("reels")?"reels1":
+              msg.includes("캐러셀")||cleanReply.includes("carousel")?"routine_carousel":"shorts";
+            addAIAddCard({title:found.title,type:typeGuess,memo:"",aiVoice:typeGuess==="shorts"});
+          }
+        }
+      }
+      return;
+    }
+
     if(multiMatch){
       try{
         const arr=JSON.parse(multiMatch[1]);
-        if(Array.isArray(arr)&&arr.length>0){
-          addAIMultiCard(arr);
-        }
+        if(Array.isArray(arr)&&arr.length>0)addAIMultiCard(arr);
       }catch(e){console.error("MULTI_JSON parse error",e);}
+    }else if(rawMultiMatch){
+      // 끝 태그 없이 JSON 배열만 있을 때
+      try{
+        const raw=rawMultiMatch[1].trim();
+        // 배열 부분만 추출
+        const arrStr=raw.match(/(\[[\s\S]*\])/)?.[1];
+        if(arrStr){
+          const arr=JSON.parse(arrStr);
+          if(Array.isArray(arr)&&arr.length>0)addAIMultiCard(arr);
+        }
+      }catch(e){console.error("RAW MULTI parse error",e);}
     }else if(jsonMatch){
       try{
         const cData=JSON.parse(jsonMatch[1]);
         addAIAddCard(cData);
       }catch(e){console.error("JSON parse error",e);}
+    }else if(mdJsonMatch){
+      try{
+        const parsed=JSON.parse(mdJsonMatch[1]);
+        if(Array.isArray(parsed))addAIMultiCard(parsed);
+        else addAIAddCard(parsed);
+      }catch(e){console.error("MD JSON parse error",e);}
     }
   }catch(e){
     document.getElementById(thinkId)?.remove();
