@@ -3362,6 +3362,8 @@ async function sendAIMessage(){
 
     // Remove thinking
     document.getElementById(thinkId)?.remove();
+    // prevAI는 현재 응답 추가 전에 미리 저장 (번호 목록 추출용)
+    const prevAI=aiChatHistory.filter(m=>m.role==="assistant").slice(-1)[0]?.content||"";
     aiChatHistory.push({role:"assistant",content:reply});
 
     // Check for content JSON
@@ -3384,7 +3386,7 @@ async function sendAIMessage(){
     // "n번 등록해줘" 강제 처리 — JSON 없어도 대화에서 추출
     // "n번 등록해줘" 강제 처리 — JSON 있어도 없어도 항상 실행
     if(registerMatch||allRegisterMatch){
-      const prevAI=aiChatHistory.filter(m=>m.role==="assistant").slice(-1)[0]?.content||cleanReply;
+      // prevAI = 현재 응답 이전의 AI 메시지 (주제 목록이 있는 곳)
       const allLines=[...prevAI.split(/\n/),...cleanReply.split(/\n/)];
       const numbered=allLines.map(l=>{
         const m=l.match(/^(?:#+\s*)?[\s*]*(\d+)[.):\s]\s*\*{0,2}(.+?)\*{0,2}\s*$/)
