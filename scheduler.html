@@ -1494,7 +1494,11 @@ function duplicatePost(id){
 }
 
 function deletePost(id){
-  S.posts=S.posts.filter(p=>p.id!==id);save();haptic("heavy");toast("🗑️ 삭제됐어요");rMain();rMetrics();
+  S.posts=S.posts.filter(p=>p.id!==id);
+  save();haptic("heavy");toast("🗑️ 삭제됐어요");
+  rMain();rMetrics();
+  // 열려있는 filter 뷰도 즉시 갱신
+  if(S._filterRefresh)S._filterRefresh();
 }
 
 /* ─── MODAL ─── */
@@ -2094,7 +2098,10 @@ function openFilterView(filter){
               </div>
               <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
                 <span style="padding:4px 10px;border-radius:8px;font-size:10px;font-weight:800;background:${s.bg};color:${s.tc};white-space:nowrap">${s.label}</span>
-                <div data-quick-id="${p.id}" style="padding:4px 10px;border-radius:8px;font-size:10px;font-weight:700;background:${c.color}22;color:${c.color};cursor:pointer;white-space:nowrap" ontouchstart="event.stopPropagation()">상태변경</div>
+                <div style="display:flex;gap:4px">
+                  <div data-quick-id="${p.id}" style="padding:4px 9px;border-radius:8px;font-size:10px;font-weight:700;background:${c.color}22;color:${c.color};cursor:pointer;white-space:nowrap" ontouchstart="event.stopPropagation()">상태</div>
+                  <div data-del-id="${p.id}" style="padding:4px 9px;border-radius:8px;font-size:10px;font-weight:700;background:#FF444420;color:#FF4444;cursor:pointer;white-space:nowrap" ontouchstart="event.stopPropagation()">삭제</div>
+                </div>
               </div>
             </div>`;
           }).join("")}
@@ -2115,7 +2122,10 @@ function openFilterView(filter){
               </div>
               ${p.memo?`<div style="font-size:11px;margin-top:5px;padding:5px 8px;border-radius:6px;background:${c.color}12;color:${c.color};font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.memo.split('\n')[0].slice(0,50))}${p.memo.length>50?"…":""}</div>`:""}
             </div>
-            <div style="padding:5px 11px;border-radius:10px;font-size:11px;font-weight:800;background:#E8F4D8;color:#274E10;flex-shrink:0">완료 ✓</div>
+            <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+              <div style="padding:5px 11px;border-radius:10px;font-size:11px;font-weight:800;background:#E8F4D8;color:#274E10">완료 ✓</div>
+              <div data-del-id="${p.id}" style="padding:5px 11px;border-radius:10px;font-size:11px;font-weight:800;background:#FF444418;color:#FF4444;cursor:pointer;text-align:center">🗑️ 삭제</div>
+            </div>
           </div>`;
         }else{
           const isReady=p.status==="ready";
@@ -2135,9 +2145,12 @@ function openFilterView(filter){
                   <span style="font-size:10px;font-weight:700;margin-left:auto;opacity:.6">${p.time}</span>
                 </div>
               </div>
-              <div data-quick-id="${p.id}" style="flex-shrink:0;text-align:center;padding:10px 13px;border-radius:14px;background:${urg.color};min-width:68px;cursor:pointer;transition:transform .12s;align-self:center" ontouchstart="this.style.transform='scale(.90)'" ontouchend="this.style.transform=''">
-                <div style="font-size:20px;line-height:1">${urg.icon}</div>
-                <div style="font-size:10px;font-weight:900;color:#fff;margin-top:4px">${urg.label}</div>
+              <div style="display:flex;flex-direction:column;gap:6px;align-self:center">
+                <div data-quick-id="${p.id}" style="text-align:center;padding:10px 13px;border-radius:14px;background:${urg.color};min-width:68px;cursor:pointer;transition:transform .12s" ontouchstart="this.style.transform='scale(.90)'" ontouchend="this.style.transform=''">
+                  <div style="font-size:20px;line-height:1">${urg.icon}</div>
+                  <div style="font-size:10px;font-weight:900;color:#fff;margin-top:4px">${urg.label}</div>
+                </div>
+                <div data-del-id="${p.id}" style="text-align:center;padding:7px 13px;border-radius:10px;background:#FF444418;color:#FF4444;font-size:11px;font-weight:800;cursor:pointer;min-width:68px" ontouchstart="this.style.transform='scale(.90)'" ontouchend="this.style.transform=''">🗑️ 삭제</div>
               </div>
             </div>
           </div>`;
@@ -2165,15 +2178,28 @@ function openFilterView(filter){
       e.stopPropagation();haptic("medium");
       openQuickStatus(+el.dataset.quickId,renderRows);
     }));
+    div.querySelectorAll("[data-del-id]").forEach(el=>el.addEventListener("click",e=>{
+      e.stopPropagation();haptic("heavy");
+      const id=+el.dataset.delId;
+      // Animate out then delete
+      const card=el.closest("[data-filter-cid],[data-edit-id],[style*='border-radius:13px'],[style*='border-radius:16px']");
+      if(card){card.style.transition="opacity .2s,transform .2s";card.style.opacity="0";card.style.transform="translateX(30px)";}
+      setTimeout(()=>{
+        S.posts=S.posts.filter(p=>p.id!==id);
+        save();rMain();rMetrics();
+        renderRows();
+        toast("🗑️ 삭제됐어요");
+      },180);
+    }));
     div.querySelectorAll("[data-edit-id]").forEach(el=>el.addEventListener("click",e=>{
-      if(e.target.closest("[data-quick-id]"))return;
+      if(e.target.closest("[data-quick-id]")||e.target.closest("[data-del-id]"))return;
       e.stopPropagation();haptic("light");
       const p=S.posts.find(x=>x.id===+el.dataset.editId);if(!p)return;
       S._filterRefresh=()=>{renderRows();rMetrics();};
       openModal("edit",{...p});
     }));
     div.querySelectorAll("[data-filter-cid]").forEach(el=>el.addEventListener("click",e=>{
-      if(e.target.closest("[data-quick-id]")||e.target.closest("[data-edit-id]"))return;
+      if(e.target.closest("[data-quick-id]")||e.target.closest("[data-edit-id]")||e.target.closest("[data-del-id]"))return;
       e.stopPropagation();haptic("light");
       const p=S.posts.find(x=>x.id===+el.dataset.filterCid);if(!p)return;
       S._filterRefresh=()=>{renderRows();rMetrics();};
@@ -2640,9 +2666,10 @@ function saveTokens(){localStorage.setItem("bf_tok_in",aiTotalIn);localStorage.s
 function calcCost(inTok,outTok){return((inTok/1000000)*0.80+(outTok/1000000)*4.00);}
 function fmtCost(usd){return usd<0.01?`$${(usd*100).toFixed(2)}¢`:`$${usd.toFixed(4)}`;}
 function updateUsageBadge(){
-  const el=document.getElementById("ai-usage-val");if(!el)return;
   const total=calcCost(aiTotalIn,aiTotalOut);
-  el.textContent=`${fmtCost(total)} 사용 (입력 ${(aiTotalIn/1000).toFixed(1)}k / 출력 ${(aiTotalOut/1000).toFixed(1)}k 토큰)`;
+  const txt=`${fmtCost(total)} (입력 ${(aiTotalIn/1000).toFixed(1)}k · 출력 ${(aiTotalOut/1000).toFixed(1)}k 토큰)`;
+  // Update all instances (badge may be in DOM or not)
+  document.querySelectorAll("#ai-usage-val").forEach(el=>el.textContent=txt);
 }
 
 function openAIChat(){
@@ -2795,18 +2822,17 @@ async function sendAIMessage(){
     const reply=data.content?.[0]?.text||"응답을 받지 못했어요.";
 
     // Track token usage
-    if(data.usage){
-      aiTotalIn+=(data.usage.input_tokens||0);
-      aiTotalOut+=(data.usage.output_tokens||0);
-      saveTokens();updateUsageBadge();
-      // Show per-message cost in small badge
-      const msgCost=calcCost(data.usage.input_tokens||0,data.usage.output_tokens||0);
-      if(msgCost>0){
-        const costBadge=document.createElement("div");
-        costBadge.style.cssText="font-size:10px;font-weight:600;opacity:.4;text-align:right;margin-top:-6px;margin-bottom:4px;padding-right:4px";
-        costBadge.textContent=`이 대화: ${fmtCost(msgCost)}`;
-        document.getElementById("ai-messages")?.appendChild(costBadge);
-      }
+    const usage=data.usage||{input_tokens:0,output_tokens:0};
+    aiTotalIn+=(usage.input_tokens||0);
+    aiTotalOut+=(usage.output_tokens||0);
+    saveTokens();updateUsageBadge();
+    const msgCost=calcCost(usage.input_tokens||0,usage.output_tokens||0);
+    if(msgCost>0){
+      const costBadge=document.createElement("div");
+      costBadge.style.cssText="font-size:10px;font-weight:600;opacity:.35;text-align:right;margin-top:-6px;margin-bottom:6px;padding-right:4px";
+      costBadge.textContent=`↑ 이 응답: ${fmtCost(msgCost)} (${usage.input_tokens}↓ ${usage.output_tokens}↑ 토큰)`;
+      document.getElementById("ai-messages")?.appendChild(costBadge);
+      document.getElementById("ai-messages").scrollTop=document.getElementById("ai-messages").scrollHeight;
     }
 
     // Remove thinking
