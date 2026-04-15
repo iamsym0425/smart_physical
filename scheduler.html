@@ -3389,10 +3389,15 @@ async function sendAIMessage(){
       // prevAI = 현재 응답 이전의 AI 메시지 (주제 목록이 있는 곳)
       const allLines=[...prevAI.split(/\n/),...cleanReply.split(/\n/)];
       const numbered=allLines.map(l=>{
-        const m=l.match(/^(?:#+\s*)?[\s*]*(\d+)[.):\s]\s*\*{0,2}(.+?)\*{0,2}\s*$/)
-          ||l.match(/^(?:#+\s+)(\d+)\s+\*{0,2}(.+?)\*{0,2}\s*$/);
+        const trimmed=l.trim();
+        // "**1) 항목명**" 같은 섹션 헤더는 제외 (별표로 감싼 것)
+        if(/^\*\*\d+[).]/.test(trimmed))return null;
+        // "- A)", "- 1)" 같은 서브항목도 제외
+        if(/^-\s+[A-Z][).]/.test(trimmed))return null;
+        const m=trimmed.match(/^(\d+)[.]\s+(.{4,50})$/)  // "1. 제목" (마침표만, 4~50자)
+          ||trimmed.match(/^##\s+(\d+)\s+\*{0,2}(.{4,50?})\*{0,2}$/); // "## 1 제목"
         return m?{num:+m[1],title:m[2].replace(/^["*\s]+|["*\s]+$/g,"").trim()}:null;
-      }).filter(x=>x&&x.title.length>2);
+      }).filter(x=>x&&x.title.length>3);
       const seen=new Set();
       const uniq=numbered.filter(x=>{if(seen.has(x.num))return false;seen.add(x.num);return true;});
 
