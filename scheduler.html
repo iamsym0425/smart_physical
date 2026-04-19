@@ -140,7 +140,7 @@ body.dark .stats-overlay{background:#0C0C0C}
 .stats-topbar{padding:52px 20px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .stats-title{font-size:20px;font-weight:900;letter-spacing:-.6px}
 .stats-close{width:36px;height:36px;border-radius:18px;font-size:18px;display:flex;align-items:center;justify-content:center}
-.stats-scroll{flex:1;overflow-y:auto;padding:0 20px 40px;-webkit-overflow-scrolling:touch}
+.stats-scroll{flex:1;overflow-y:auto;padding:0 20px 40px;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain}
 .stats-scroll::-webkit-scrollbar{display:none}
 .stats-section{margin-bottom:28px}
 .stats-section-lbl{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
@@ -631,7 +631,8 @@ function lockBody(){
       ".srch-overlay, .srch-results, "+
       ".ai-overlay, .ai-messages, "+
       ".filter-sheet, .filter-scroll, "+
-      ".ideas-scroll, .day-view, .pipeline-scroll"
+      ".ideas-scroll, .day-view, .pipeline-scroll, "+
+      ".stats-scroll, .stats-overlay"
     );
     if(!allowed)e.preventDefault();
   };
@@ -1725,7 +1726,14 @@ function openIdeaScheduler(){
 /* ─── STATS PAGE ─── */
 function openStats(){
   haptic("medium");
+  // 이미 열려있으면 닫기
+  if(document.getElementById("stats-root")){
+    document.getElementById("stats-root")?.remove();
+    unlockBody();
+    return;
+  }
   const root=document.getElementById("R-modal");
+  lockBody();
   renderStatsUI(root);
 }
 
